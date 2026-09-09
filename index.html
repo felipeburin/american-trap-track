@@ -293,16 +293,6 @@
   }
   .toast.show{opacity:1;}
 
-  #printArea{display:none;}
-  @media print{
-    header.top, nav.tabs, main, .no-print{display:none !important;}
-    #printArea{display:block !important;padding:10px;color:#000;}
-    #printArea h2{font-family:ui-serif,Georgia,serif;margin-bottom:2px;}
-    #printArea table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;}
-    #printArea th,#printArea td{border:1px solid #999;padding:5px 7px;text-align:center;}
-    #printArea .print-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px;}
-    #printArea .print-pedana h4{margin:0 0 4px;font-family:ui-serif,Georgia,serif;}
-  }
 
   .modal-overlay{
     position:fixed;
@@ -354,7 +344,7 @@
 <nav class="tabs no-print">
   <button data-tab="novo" class="active">Novo treino</button>
   <button data-tab="historico">Histórico</button>
-  <button data-tab="graficos">Gráficos / PDF</button>
+  <button data-tab="graficos">Gráficos</button>
 </nav>
 
 <main>
@@ -402,9 +392,6 @@
       <canvas id="chartCanvas" width="600" height="220"></canvas>
     </div>
     <div id="tabelaResumo"></div>
-    <div class="actions-row">
-      <button class="btn btn-clay" id="btnPdfHistorico" style="width:100%">Exportar histórico consolidado (PDF)</button>
-    </div>
   </section>
 
 </main>
@@ -433,9 +420,7 @@
 <div class="toast no-print" id="toast"></div>
 
 <!-- área usada somente na impressão -->
-<div id="printArea"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -651,7 +636,6 @@
       html += breakdown;
       html += '<div class="btnrow">';
       html += '<button data-act="editar" data-id="'+t.id+'">Editar</button>';
-      html += '<button data-act="pdf" data-id="'+t.id+'">Imprimir / PDF</button>';
       html += '<button data-act="excluir" data-id="'+t.id+'" class="danger">Excluir</button>';
       html += '</div></div>';
     });
@@ -677,119 +661,10 @@
         renderHistorico();
         renderGraficos();
       }
-    } else if(act==="pdf"){
-      imprimirTreino(treino);
     }
   });
 
-  function pdfDisponivel(){
-    return typeof window.jspdf !== "undefined" && window.jspdf.jsPDF;
-  }
-
-  // ---------- exportar PDF de um treino ----------
-  function exportarPdfTreino(t){
-    if(!pdfDisponivel()){
-      showToast("Sem gerador de PDF (sem internet). Usando impressão...");
-      imprimirTreino(t);
-      return;
-    }
-    var st = statsDoTreino(t);
-    var jsPDF = window.jspdf.jsPDF;
-    var doc = new jsPDF();
-    var y = 18;
-    doc.setFontSize(16);
-    doc.text("Caderno de Tiro - Trap", 14, y); y += 8;
-    doc.setFontSize(11);
-    doc.text("Data: " + formatDateBR(t.data) + "    Resultado: " + st.acertos + "/25 (" + st.pct + "%)", 14, y);
-    y += 6;
-    if(t.arma || t.municao){
-      doc.setFontSize(10);
-      doc.text("Arma: " + (t.arma || "-") + "    Municao: " + (t.municao || "-"), 14, y);
-      y += 6;
-    }
-    y += 4;
-
-    t.pedanas.forEach(function(shots, p){
-      if(y > 265){ doc.addPage(); y = 18; }
-      doc.setFontSize(13);
-      doc.text("Pedana " + (p+1) + "  (" + st.porPedana[p].acertos + "/5 acertos, " + st.porPedana[p].erros + " erros)", 14, y);
-      y += 7;
-      doc.setFontSize(10);
-      shots.forEach(function(sh, s){
-        var res = sh.hit==='hit' ? 'Acerto' : (sh.hit==='miss' ? 'Erro' : 'nao marcado');
-        var lado = sh.side || 'nao marcado';
-        doc.text("Tiro " + (s+1) + ":  " + res + "   |   Lado: " + lado, 18, y);
-        y += 5.5;
-      });
-      y += 5;
-    });
-
-    doc.save("treino-" + t.data + ".pdf");
-    showToast("PDF gerado.");
-  }
-
-  // ---------- exportar PDF do historico consolidado ----------
-  function exportarPdfHistorico(){
-    var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
-    if(!pdfDisponivel()){
-      showToast("Sem gerador de PDF (sem internet). Usando impressão...");
-      imprimirHistoricoConsolidado(lista);
-      return;
-    }
-    var jsPDF = window.jspdf.jsPDF;
-    var doc = new jsPDF();
-    var y = 18;
-    doc.setFontSize(16);
-    doc.text("Caderno de Tiro - Historico Consolidado", 14, y); y += 10;
-
-    if(lista.length===0){
-      doc.setFontSize(11);
-      doc.text("Nenhum treino registrado.", 14, y);
-    } else {
-      var canvas = document.getElementById("chartCanvas");
-      var imgData = canvas.toDataURL("image/png");
-      var pageWidth = doc.internal.pageSize.getWidth();
-      var imgW = pageWidth - 28;
-      var imgH = imgW * (canvas.height/canvas.width) * (canvas.clientWidth ? (canvas.clientWidth/canvas.clientWidth) : 1);
-      imgH = imgW * 0.4;
-      doc.addImage(imgData, "PNG", 14, y, imgW, imgH);
-      y += imgH + 10;
-
-      doc.setFontSize(11);
-      lista.slice().reverse().forEach(function(t){
-        if(y > 275){ doc.addPage(); y = 18; }
-        var st = statsDoTreino(t);
-        var cols = st.porPedana.map(function(p,i){ return "P"+(i+1)+":"+p.acertos+"/5("+p.erros+"E)"; }).join("  ");
-        doc.text(formatDateBR(t.data) + "  -  " + st.acertos + "/25 (" + st.pct + "%)  -  " + cols, 14, y);
-        y += 6;
-      });
-    }
-    doc.save("historico-consolidado.pdf");
-    showToast("PDF gerado.");
-  }
-  function imprimirTreino(t){
-    var st = statsDoTreino(t);
-    var html = '<h2>Caderno de Tiro — Trap</h2>';
-    html += '<p><strong>Data:</strong> '+formatDateBR(t.data)+' &nbsp;&nbsp; <strong>Resultado:</strong> '+st.acertos+'/25 ('+st.pct+'%)</p>';
-    if(t.arma || t.municao){
-      html += '<p><strong>Arma:</strong> '+(t.arma||'—')+' &nbsp;&nbsp; <strong>Munição:</strong> '+(t.municao||'—')+'</p>';
-    }
-    html += '<div class="print-grid">';
-    t.pedanas.forEach(function(shots, p){
-      html += '<div class="print-pedana"><h4>Pedana '+(p+1)+' — '+st.porPedana[p].acertos+'/5 acertos, '+st.porPedana[p].erros+' erros</h4><table><tr><th>Tiro</th><th>Result.</th><th>Lado</th></tr>';
-      shots.forEach(function(sh, s){
-        var res = sh.hit==='hit' ? 'Acerto' : (sh.hit==='miss' ? 'Erro' : '—');
-        var lado = sh.side || '—';
-        html += '<tr><td>'+(s+1)+'</td><td>'+res+'</td><td>'+lado+'</td></tr>';
-      });
-      html += '</table></div>';
-    });
-    html += '</div>';
-    document.getElementById("printArea").innerHTML = html;
-    window.print();
-  }
-
-  // ---------- render: GRAFICOS ----------
+  // ---------- graficos ----------
   function renderGraficos(){
     var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
     desenharGrafico(lista);
@@ -862,30 +737,6 @@
       ctx.fillText(dLabel, x+barW/2, padT+plotH+14);
     });
   }
-
-  function imprimirHistoricoConsolidado(lista){
-    var canvas = document.getElementById("chartCanvas");
-    var imgData = canvas.toDataURL("image/png");
-    var html = '<h2>Caderno de Tiro — Histórico Consolidado</h2>';
-    if(lista.length===0){
-      html += '<p>Nenhum treino registrado.</p>';
-    } else {
-      html += '<img src="'+imgData+'" style="width:100%;max-width:600px;border:1px solid #999;margin:8px 0;">';
-      html += '<table><tr><th>Data</th><th>Acertos</th><th>Erros</th><th>%</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>';
-      lista.slice().reverse().forEach(function(t){
-        var st = statsDoTreino(t);
-        var cols = st.porPedana.map(function(p){ return p.acertos+"/5 ("+p.erros+"E)"; });
-        html += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.erros+'</td><td>'+st.pct+'%</td><td>'+cols.join('</td><td>')+'</td></tr>';
-      });
-      html += '</table>';
-    }
-    document.getElementById("printArea").innerHTML = html;
-    window.print();
-  }
-
-  document.getElementById("btnPdfHistorico").addEventListener("click", function(){
-    exportarPdfHistorico();
-  });
 
   // ---------- toast ----------
   var toastTimer=null;
