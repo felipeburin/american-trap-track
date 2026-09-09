@@ -42,7 +42,25 @@
     color:var(--paper);
     padding:22px 18px 18px;
     border-bottom:4px solid var(--clay);
+    position:relative;
   }
+  .config-btn{
+    position:absolute;
+    top:16px;
+    right:16px;
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    border:1px solid #4a564f;
+    background:rgba(255,255,255,.06);
+    color:var(--paper);
+    font-size:1.15rem;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .config-btn:active{background:rgba(255,255,255,.15);}
   header.top h1{
     font-family:ui-serif,Georgia,"Times New Roman",serif;
     font-weight:700;
@@ -208,7 +226,32 @@
   .hist-item .date{font-family:ui-serif,Georgia,serif;font-weight:700;font-size:1.05rem;}
   .hist-item .score{font-size:.95rem;color:var(--hit);font-weight:700;}
   .hist-item .breakdown{font-size:.74rem;color:var(--ink-soft);margin-bottom:8px;}
-  .hist-item .pedana-breakdown div{line-height:1.5;}
+  table.pedana-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-bottom:10px;
+    font-size:.76rem;
+  }
+  table.pedana-table th{
+    text-align:left;
+    font-weight:600;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    font-size:.62rem;
+    letter-spacing:.02em;
+    padding:3px 6px;
+    border-bottom:1px solid var(--line);
+  }
+  table.pedana-table td{
+    padding:4px 6px;
+    border-bottom:1px solid #ede8da;
+    color:var(--ink);
+  }
+  table.pedana-table th:not(:first-child),
+  table.pedana-table td:not(:first-child){
+    text-align:right;
+  }
+  table.pedana-table tr:last-child td{border-bottom:none;}
   .hist-item .btnrow{display:flex;gap:6px;flex-wrap:wrap;}
   .hist-item .btnrow button{
     border:1px solid var(--line);
@@ -260,11 +303,50 @@
     #printArea .print-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px;}
     #printArea .print-pedana h4{margin:0 0 4px;font-family:ui-serif,Georgia,serif;}
   }
+
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(20,24,20,.55);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:100;
+  }
+  .modal-overlay[hidden]{display:none;}
+  .modal-box{
+    background:var(--paper);
+    width:100%;
+    max-width:640px;
+    border-radius:14px 14px 0 0;
+    padding:16px 18px 26px;
+    box-shadow:0 -6px 24px rgba(0,0,0,.25);
+  }
+  .modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .modal-head h2{
+    font-family:ui-serif,Georgia,serif;
+    font-size:1.15rem;
+    margin:0;
+  }
+  .modal-close{
+    border:none;
+    background:transparent;
+    font-size:1.5rem;
+    line-height:1;
+    color:var(--ink-soft);
+    padding:0 4px;
+  }
 </style>
 </head>
 <body>
 
 <header class="top">
+  <button id="btnConfig" class="config-btn no-print" aria-label="Configurações" title="Configurações">&#9881;</button>
   <h1>Caderno de Tiro</h1>
   <p>Registro de treinos de trap americano · dados salvos neste aparelho</p>
 </header>
@@ -323,8 +405,18 @@
     <div class="actions-row">
       <button class="btn btn-clay" id="btnPdfHistorico" style="width:100%">Exportar histórico consolidado (PDF)</button>
     </div>
+  </section>
 
-    <div class="field" style="margin-top:22px;">
+</main>
+
+<!-- MODAL DE CONFIGURACOES -->
+<div class="modal-overlay no-print" id="configOverlay" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Configurações</h2>
+      <button id="btnFecharConfig" class="modal-close">&times;</button>
+    </div>
+    <div class="field">
       <label>Backup (arquivo .json)</label>
       <div class="actions-row" style="margin-top:6px;">
         <button class="btn btn-ghost" id="btnBackupManual">Baixar backup agora</button>
@@ -335,9 +427,8 @@
         Toque em "Baixar backup agora" sempre que quiser guardar uma cópia do seu histórico. O arquivo vai para a pasta de downloads configurada no Safari (Ajustes → Safari → Downloads) — pode apagar as versões antigas quando quiser.
       </p>
     </div>
-  </section>
-
-</main>
+  </div>
+</div>
 
 <div class="toast no-print" id="toast"></div>
 
@@ -546,12 +637,18 @@
     var html = "";
     lista.forEach(function(t){
       var st = statsDoTreino(t);
-      var breakdown = t.pedanas.map(function(_,i){ return '<div>P'+(i+1)+': '+st.porPedana[i].acertos+'/5 ('+st.porPedana[i].erros+' erro'+(st.porPedana[i].erros===1?'':'s')+')</div>'; }).join('');
+      var breakdown = '<table class="pedana-table"><tr><th>Pedana</th><th>Acertos</th><th>Erros</th><th>%</th></tr>' +
+        t.pedanas.map(function(_,i){
+          var ps = st.porPedana[i];
+          var pct = Math.round((ps.acertos/5)*100);
+          return '<tr><td>P'+(i+1)+'</td><td>'+ps.acertos+'/5</td><td>'+ps.erros+'</td><td>'+pct+'%</td></tr>';
+        }).join('') +
+        '</table>';
       var equip = [t.arma, t.municao].filter(Boolean).join("  ·  ");
       html += '<div class="hist-item">';
       html += '<div class="row1"><span class="date">'+formatDateBR(t.data)+'</span><span class="score">'+st.acertos+'/25 ('+st.pct+'%)</span></div>';
       if(equip){ html += '<div class="breakdown">'+equip+'</div>'; }
-      html += '<div class="breakdown pedana-breakdown">'+breakdown+'</div>';
+      html += breakdown;
       html += '<div class="btnrow">';
       html += '<button data-act="editar" data-id="'+t.id+'">Editar</button>';
       html += '<button data-act="pdf" data-id="'+t.id+'">Imprimir / PDF</button>';
@@ -799,6 +896,17 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
   }
+
+  // ---------- modal de configuracoes ----------
+  document.getElementById("btnConfig").addEventListener("click", function(){
+    document.getElementById("configOverlay").hidden = false;
+  });
+  document.getElementById("btnFecharConfig").addEventListener("click", function(){
+    document.getElementById("configOverlay").hidden = true;
+  });
+  document.getElementById("configOverlay").addEventListener("click", function(e){
+    if(e.target.id === "configOverlay"){ e.currentTarget.hidden = true; }
+  });
 
   // ---------- backup manual / importar ----------
   document.getElementById("btnBackupManual").addEventListener("click", function(){
