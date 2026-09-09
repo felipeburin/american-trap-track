@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Caderno de Tiro — Trap</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#24322e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caderno de Tiro">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="icon" href="icon-512.png" sizes="512x512">
+<style>
+  :root{
+    --paper: #efe9dc;
+    --paper-dark: #e4dcc9;
+    --ink: #24322e;
+    --ink-soft: #57635c;
+    --line: #c9bfa8;
+    --clay: #bf5b2e;
+    --hit: #4c7a54;
+    --hit-bg: #e2ead9;
+    --miss: #a13d3d;
+    --miss-bg: #f1dcd6;
+    --sky: #56778c;
+    --white: #faf8f2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:40px;
+  }
+  header.top{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 18px 18px;
+    border-bottom:4px solid var(--clay);
+  }
+  header.top h1{
+    font-family:ui-serif,Georgia,"Times New Roman",serif;
+    font-weight:700;
+    font-size:1.5rem;
+    margin:0 0 2px;
+    letter-spacing:.2px;
+  }
+  header.top p{
+    margin:0;
+    font-size:.8rem;
+    color:#cfd6ca;
+  }
+  nav.tabs{
+    display:flex;
+    background:var(--paper-dark);
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  nav.tabs button{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:12px 4px;
+    font-size:.82rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    border-bottom:3px solid transparent;
+  }
+  nav.tabs button.active{
+    color:var(--ink);
+    border-bottom-color:var(--clay);
+  }
+  main{padding:16px;max-width:640px;margin:0 auto;}
+  section.view{display:none;}
+  section.view.active{display:block;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.78rem;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
+  .field input[type=date]{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--white);
+    font-size:1rem;
+    color:var(--ink);
+  }
+
+  .summary-bar{
+    display:flex;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .summary-chip{
+    flex:1;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    text-align:center;
+  }
+  .summary-chip .num{font-family:ui-serif,Georgia,serif;font-size:1.4rem;font-weight:700;}
+  .summary-chip .lbl{font-size:.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+
+  .pedana-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:8px;
+    margin-bottom:12px;
+    overflow:hidden;
+  }
+  .pedana-card h3{
+    margin:0;
+    font-family:ui-serif,Georgia,serif;
+    font-size:1rem;
+    padding:8px 12px;
+    background:var(--paper-dark);
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .pedana-card h3 span.pstat{font-family:inherit;font-size:.78rem;color:var(--ink-soft);font-weight:400;}
+  .shot-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 10px;
+    border-bottom:1px solid #ede8da;
+    flex-wrap:wrap;
+  }
+  .shot-row:last-child{border-bottom:none;}
+  .shot-label{width:38px;font-size:.75rem;color:var(--ink-soft);flex-shrink:0;}
+  .seg{display:flex;gap:4px;}
+  .seg button{
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink-soft);
+    border-radius:6px;
+    padding:6px 9px;
+    font-size:.75rem;
+    font-weight:600;
+    line-height:1;
+  }
+  .seg.hitmiss button{
+    width:38px;height:38px;
+    min-width:38px;
+    padding:0;
+    font-size:1.1rem;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .seg.hitmiss button[data-action="hit"]{border-color:var(--hit);color:var(--hit);background:var(--white);}
+  .seg.hitmiss button[data-action="miss"]{border-color:var(--miss);color:var(--miss);background:var(--white);}
+  .seg.side button{min-width:30px;}
+  .seg button.active-hit{background:var(--hit);border-color:var(--hit);color:#fff;}
+  .seg button.active-miss{background:var(--miss);border-color:var(--miss);color:#fff;}
+  .seg.hitmiss button[data-action="hit"].active-hit{background:var(--hit);border-color:var(--hit);color:#fff;}
+  .seg.hitmiss button[data-action="miss"].active-miss{background:var(--miss);border-color:var(--miss);color:#fff;}
+  .seg button.active-side{background:var(--sky);border-color:var(--sky);color:#fff;}
+
+  .btn{
+    display:inline-block;
+    border:none;
+    border-radius:7px;
+    padding:11px 16px;
+    font-size:.88rem;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--ink);color:var(--paper);width:100%;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-clay{background:var(--clay);color:#fff;}
+  .actions-row{display:flex;gap:8px;margin-top:14px;}
+  .actions-row .btn{flex:1;}
+
+  .hist-item{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px;
+    margin-bottom:10px;
+  }
+  .hist-item .row1{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:4px;
+  }
+  .hist-item .date{font-family:ui-serif,Georgia,serif;font-weight:700;font-size:1.05rem;}
+  .hist-item .score{font-size:.95rem;color:var(--hit);font-weight:700;}
+  .hist-item .breakdown{font-size:.74rem;color:var(--ink-soft);margin-bottom:8px;}
+  .hist-item .btnrow{display:flex;gap:6px;flex-wrap:wrap;}
+  .hist-item .btnrow button{
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:6px;
+    padding:6px 10px;
+    font-size:.72rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .hist-item .btnrow button.danger{color:var(--miss);border-color:var(--miss-bg);}
+  .empty-msg{
+    text-align:center;
+    color:var(--ink-soft);
+    padding:30px 10px;
+    font-size:.9rem;
+  }
+
+  canvas#chartCanvas{width:100%;height:220px;background:var(--white);border:1px solid var(--line);border-radius:8px;}
+  .chart-wrap{margin-bottom:16px;}
+  table.rep{width:100%;border-collapse:collapse;font-size:.78rem;background:var(--white);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  table.rep th, table.rep td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;}
+  table.rep th{background:var(--paper-dark);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+
+  .toast{
+    position:fixed;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:var(--paper);
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:.82rem;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s;
+    z-index:50;
+  }
+  .toast.show{opacity:1;}
+
+  #printArea{display:none;}
+  @media print{
+    header.top, nav.tabs, main, .no-print{display:none !important;}
+    #printArea{display:block !important;padding:10px;color:#000;}
+    #printArea h2{font-family:ui-serif,Georgia,serif;margin-bottom:2px;}
+    #printArea table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;}
+    #printArea th,#printArea td{border:1px solid #999;padding:5px 7px;text-align:center;}
+    #printArea .print-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px;}
+    #printArea .print-pedana h4{margin:0 0 4px;font-family:ui-serif,Georgia,serif;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Caderno de Tiro</h1>
+  <p>Registro de treinos de trap americano · dados salvos neste aparelho</p>
+</header>
+
+<nav class="tabs no-print">
+  <button data-tab="novo" class="active">Novo treino</button>
+  <button data-tab="historico">Histórico</button>
+  <button data-tab="graficos">Gráficos / PDF</button>
+</nav>
+
+<main>
+
+  <!-- NOVO TREINO -->
+  <section class="view active" id="view-novo">
+    <div class="field">
+      <label for="inpData">Data do treino</label>
+      <input type="date" id="inpData">
+    </div>
+
+    <div class="summary-bar">
+      <div class="summary-chip"><div class="num" id="sumAcertos">0</div><div class="lbl">Acertos</div></div>
+      <div class="summary-chip"><div class="num" id="sumMarcados">0/25</div><div class="lbl">Marcados</div></div>
+      <div class="summary-chip"><div class="num" id="sumPct">0%</div><div class="lbl">Aproveit.</div></div>
+    </div>
+
+    <div id="pedanasContainer"></div>
+
+    <div class="actions-row">
+      <button class="btn btn-ghost" id="btnLimpar">Limpar tudo</button>
+      <button class="btn btn-primary" id="btnSalvar">Salvar treino</button>
+    </div>
+  </section>
+
+  <!-- HISTORICO -->
+  <section class="view" id="view-historico">
+    <div id="histList"></div>
+  </section>
+
+  <!-- GRAFICOS -->
+  <section class="view" id="view-graficos">
+    <div class="chart-wrap">
+      <canvas id="chartCanvas" width="600" height="220"></canvas>
+    </div>
+    <div id="tabelaResumo"></div>
+    <div class="actions-row">
+      <button class="btn btn-clay" id="btnPdfHistorico" style="width:100%">Exportar histórico consolidado (PDF)</button>
+    </div>
+
+    <div class="field" style="margin-top:22px;">
+      <label>Backup (arquivo .json)</label>
+      <div class="actions-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" id="btnBackupManual">Baixar backup agora</button>
+        <button class="btn btn-ghost" id="btnAbrirImport">Importar backup</button>
+      </div>
+      <input type="file" id="inpImport" accept="application/json,.json" style="display:none;">
+      <p style="font-size:.72rem;color:var(--ink-soft);margin-top:8px;">
+        Um backup é baixado automaticamente sempre que você salva ou exclui um treino. Os arquivos vão para a pasta de downloads configurada no Safari (Ajustes → Safari → Downloads) — pode apagar as versões antigas quando quiser.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast no-print" id="toast"></div>
+
+<!-- área usada somente na impressão -->
+<div id="printArea"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "trapTreinos_v1";
+  var LADOS = ["E","C","D"];
+
+  // ---------- persistência ----------
+  function getTreinos(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function setTreinos(arr){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  }
+  function uid(){ return "t" + Date.now() + Math.floor(Math.random()*1000); }
+
+  // ---------- backup em .json ----------
+  function baixarBackup(){
+    try{
+      var lista = getTreinos();
+      var blob = new Blob([JSON.stringify(lista, null, 2)], {type:"application/json"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "trap-treino-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+    }catch(e){ console.error("Falha ao gerar backup", e); }
+  }
+
+  function importarBackup(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var dados = JSON.parse(e.target.result);
+        if(!Array.isArray(dados)) throw new Error("Formato inválido");
+        if(!confirm("Importar "+dados.length+" treino(s)? Isso vai somar ao histórico já salvo neste navegador (treinos com o mesmo id serão substituídos).")) return;
+        var atual = getTreinos();
+        dados.forEach(function(novo){
+          var idx = atual.findIndex(function(t){ return t.id===novo.id; });
+          if(idx>=0) atual[idx]=novo; else atual.push(novo);
+        });
+        setTreinos(atual);
+        renderHistorico();
+        renderGraficos();
+        showToast("Backup importado.");
+      }catch(err){
+        alert("Não foi possível ler este arquivo como backup válido.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function novoTreinoVazio(){
+    var pedanas = [];
+    for(var p=0;p<5;p++){
+      var shots = [];
+      for(var s=0;s<5;s++){ shots.push({hit:null, side:null}); }
+      pedanas.push(shots);
+    }
+    return { id:null, data: hojeISO(), pedanas: pedanas };
+  }
+
+  function hojeISO(){
+    var d = new Date();
+    var mm = String(d.getMonth()+1).padStart(2,"0");
+    var dd = String(d.getDate()).padStart(2,"0");
+    return d.getFullYear()+"-"+mm+"-"+dd;
+  }
+  function formatDateBR(iso){
+    if(!iso) return "";
+    var parts = iso.split("-");
+    return parts[2]+"/"+parts[1]+"/"+parts[0];
+  }
+
+  // ---------- estado corrente do formulário ----------
+  var current = novoTreinoVazio();
+
+  // ---------- cálculo de estatísticas ----------
+  function statsDoTreino(treino){
+    var acertos=0, marcados=0, total=25;
+    var porPedana = [];
+    var porLado = {E:0,C:0,D:0};
+    treino.pedanas.forEach(function(shots){
+      var pAcertos=0, pMarcados=0;
+      shots.forEach(function(sh){
+        if(sh.hit){ marcados++; pMarcados++; if(sh.hit==='hit'){acertos++; pAcertos++;} }
+        if(sh.side && sh.hit==='miss'){ porLado[sh.side]++; }
+      });
+      porPedana.push({acertos:pAcertos, marcados:pMarcados});
+    });
+    return {acertos:acertos, marcados:marcados, total:total, pct: total? Math.round(acertos/total*100):0, porPedana:porPedana, porLado:porLado};
+  }
+
+  // ---------- render: NOVO TREINO ----------
+  function renderNovoTreino(){
+    document.getElementById("inpData").value = current.data;
+    var st = statsDoTreino(current);
+    document.getElementById("sumAcertos").textContent = st.acertos;
+    document.getElementById("sumMarcados").textContent = st.marcados + "/25";
+    document.getElementById("sumPct").textContent = st.pct + "%";
+
+    var html = "";
+    for(var p=0; p<5; p++){
+      var ps = st.porPedana[p];
+      html += '<div class="pedana-card"><h3>Pedana '+(p+1)+' <span class="pstat">'+ps.acertos+'/5</span></h3>';
+      for(var s=0; s<5; s++){
+        var shot = current.pedanas[p][s];
+        html += '<div class="shot-row">';
+        html += '<span class="shot-label">Tiro '+(s+1)+'</span>';
+        html += '<div class="seg hitmiss">';
+        html += '<button data-p="'+p+'" data-s="'+s+'" data-action="hit" class="'+(shot.hit==='hit'?'active-hit':'')+'">&#10003;</button>';
+        html += '<button data-p="'+p+'" data-s="'+s+'" data-action="miss" class="'+(shot.hit==='miss'?'active-miss':'')+'">&#10005;</button>';
+        html += '</div>';
+        html += '<div class="seg side">';
+        LADOS.forEach(function(lado){
+          html += '<button data-p="'+p+'" data-s="'+s+'" data-action="side" data-value="'+lado+'" class="'+(shot.side===lado?'active-side':'')+'">'+lado+'</button>';
+        });
+        html += '</div></div>';
+      }
+      html += '</div>';
+    }
+    document.getElementById("pedanasContainer").innerHTML = html;
+  }
+
+  document.getElementById("inpData").addEventListener("change", function(e){
+    current.data = e.target.value;
+  });
+
+  document.getElementById("pedanasContainer").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-action]");
+    if(!btn) return;
+    var p = parseInt(btn.getAttribute("data-p"),10);
+    var s = parseInt(btn.getAttribute("data-s"),10);
+    var action = btn.getAttribute("data-action");
+    var shot = current.pedanas[p][s];
+    if(action==="hit" || action==="miss"){
+      shot.hit = (shot.hit===action) ? null : action;
+    } else if(action==="side"){
+      var val = btn.getAttribute("data-value");
+      shot.side = (shot.side===val) ? null : val;
+    }
+    renderNovoTreino();
+  });
+
+  document.getElementById("btnLimpar").addEventListener("click", function(){
+    if(confirm("Limpar todos os tiros marcados neste treino?")){
+      var keepId = current.id, keepData = current.data;
+      current = novoTreinoVazio();
+      current.id = keepId; current.data = keepData;
+      renderNovoTreino();
+    }
+  });
+
+  document.getElementById("btnSalvar").addEventListener("click", function(){
+    if(!current.data){ showToast("Escolha uma data antes de salvar."); return; }
+    var lista = getTreinos();
+    if(current.id){
+      var idx = lista.findIndex(function(t){return t.id===current.id;});
+      if(idx>=0) lista[idx]=current; else { current.id=uid(); lista.push(current); }
+    } else {
+      current.id = uid();
+      lista.push(current);
+    }
+    setTreinos(lista);
+    baixarBackup();
+    showToast("Treino salvo. Backup baixado.");
+    current = novoTreinoVazio();
+    renderNovoTreino();
+    renderHistorico();
+    renderGraficos();
+    switchTab("historico");
+  });
+
+  // ---------- render: HISTORICO ----------
+  function renderHistorico(){
+    var lista = getTreinos().slice().sort(function(a,b){ return b.data.localeCompare(a.data); });
+    var el = document.getElementById("histList");
+    if(lista.length===0){
+      el.innerHTML = '<div class="empty-msg">Nenhum treino registrado ainda.<br>Vá até "Novo treino" para começar.</div>';
+      return;
+    }
+    var html = "";
+    lista.forEach(function(t){
+      var st = statsDoTreino(t);
+      var breakdown = t.pedanas.map(function(_,i){ return "P"+(i+1)+": "+st.porPedana[i].acertos+"/5"; }).join("  ·  ");
+      html += '<div class="hist-item">';
+      html += '<div class="row1"><span class="date">'+formatDateBR(t.data)+'</span><span class="score">'+st.acertos+'/25 ('+st.pct+'%)</span></div>';
+      html += '<div class="breakdown">'+breakdown+'</div>';
+      html += '<div class="btnrow">';
+      html += '<button data-act="editar" data-id="'+t.id+'">Editar</button>';
+      html += '<button data-act="pdf" data-id="'+t.id+'">Imprimir / PDF</button>';
+      html += '<button data-act="excluir" data-id="'+t.id+'" class="danger">Excluir</button>';
+      html += '</div></div>';
+    });
+    el.innerHTML = html;
+  }
+
+  document.getElementById("histList").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-act]");
+    if(!btn) return;
+    var id = btn.getAttribute("data-id");
+    var act = btn.getAttribute("data-act");
+    var lista = getTreinos();
+    var treino = lista.find(function(t){ return t.id===id; });
+    if(!treino) return;
+    if(act==="editar"){
+      current = JSON.parse(JSON.stringify(treino));
+      renderNovoTreino();
+      switchTab("novo");
+    } else if(act==="excluir"){
+      if(confirm("Excluir o treino de "+formatDateBR(treino.data)+"?")){
+        lista = lista.filter(function(t){ return t.id!==id; });
+        setTreinos(lista);
+        baixarBackup();
+        renderHistorico();
+        renderGraficos();
+      }
+    } else if(act==="pdf"){
+      imprimirTreino(treino);
+    }
+  });
+
+  function pdfDisponivel(){
+    return typeof window.jspdf !== "undefined" && window.jspdf.jsPDF;
+  }
+
+  // ---------- exportar PDF de um treino ----------
+  function exportarPdfTreino(t){
+    if(!pdfDisponivel()){
+      showToast("Sem gerador de PDF (sem internet). Usando impressão...");
+      imprimirTreino(t);
+      return;
+    }
+    var st = statsDoTreino(t);
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF();
+    var y = 18;
+    doc.setFontSize(16);
+    doc.text("Caderno de Tiro - Trap", 14, y); y += 8;
+    doc.setFontSize(11);
+    doc.text("Data: " + formatDateBR(t.data) + "    Resultado: " + st.acertos + "/25 (" + st.pct + "%)", 14, y);
+    y += 10;
+
+    t.pedanas.forEach(function(shots, p){
+      if(y > 265){ doc.addPage(); y = 18; }
+      doc.setFontSize(13);
+      doc.text("Pedana " + (p+1) + "  (" + st.porPedana[p].acertos + "/5)", 14, y);
+      y += 7;
+      doc.setFontSize(10);
+      shots.forEach(function(sh, s){
+        var res = sh.hit==='hit' ? 'Acerto' : (sh.hit==='miss' ? 'Erro' : 'nao marcado');
+        var lado = sh.side || 'nao marcado';
+        doc.text("Tiro " + (s+1) + ":  " + res + "   |   Lado: " + lado, 18, y);
+        y += 5.5;
+      });
+      y += 5;
+    });
+
+    doc.save("treino-" + t.data + ".pdf");
+    showToast("PDF gerado.");
+  }
+
+  // ---------- exportar PDF do historico consolidado ----------
+  function exportarPdfHistorico(){
+    var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+    if(!pdfDisponivel()){
+      showToast("Sem gerador de PDF (sem internet). Usando impressão...");
+      imprimirHistoricoConsolidado(lista);
+      return;
+    }
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF();
+    var y = 18;
+    doc.setFontSize(16);
+    doc.text("Caderno de Tiro - Historico Consolidado", 14, y); y += 10;
+
+    if(lista.length===0){
+      doc.setFontSize(11);
+      doc.text("Nenhum treino registrado.", 14, y);
+    } else {
+      var canvas = document.getElementById("chartCanvas");
+      var imgData = canvas.toDataURL("image/png");
+      var pageWidth = doc.internal.pageSize.getWidth();
+      var imgW = pageWidth - 28;
+      var imgH = imgW * (canvas.height/canvas.width) * (canvas.clientWidth ? (canvas.clientWidth/canvas.clientWidth) : 1);
+      imgH = imgW * 0.4;
+      doc.addImage(imgData, "PNG", 14, y, imgW, imgH);
+      y += imgH + 10;
+
+      doc.setFontSize(11);
+      lista.slice().reverse().forEach(function(t){
+        if(y > 275){ doc.addPage(); y = 18; }
+        var st = statsDoTreino(t);
+        var cols = st.porPedana.map(function(p,i){ return "P"+(i+1)+":"+p.acertos+"/5"; }).join("  ");
+        doc.text(formatDateBR(t.data) + "  -  " + st.acertos + "/25 (" + st.pct + "%)  -  " + cols, 14, y);
+        y += 6;
+      });
+    }
+    doc.save("historico-consolidado.pdf");
+    showToast("PDF gerado.");
+  }
+  function imprimirTreino(t){
+    var st = statsDoTreino(t);
+    var html = '<h2>Caderno de Tiro — Trap</h2>';
+    html += '<p><strong>Data:</strong> '+formatDateBR(t.data)+' &nbsp;&nbsp; <strong>Resultado:</strong> '+st.acertos+'/25 ('+st.pct+'%)</p>';
+    html += '<div class="print-grid">';
+    t.pedanas.forEach(function(shots, p){
+      html += '<div class="print-pedana"><h4>Pedana '+(p+1)+'</h4><table><tr><th>Tiro</th><th>Result.</th><th>Lado</th></tr>';
+      shots.forEach(function(sh, s){
+        var res = sh.hit==='hit' ? 'Acerto' : (sh.hit==='miss' ? 'Erro' : '—');
+        var lado = sh.side || '—';
+        html += '<tr><td>'+(s+1)+'</td><td>'+res+'</td><td>'+lado+'</td></tr>';
+      });
+      html += '</table></div>';
+    });
+    html += '</div>';
+    document.getElementById("printArea").innerHTML = html;
+    window.print();
+  }
+
+  // ---------- render: GRAFICOS ----------
+  function renderGraficos(){
+    var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+    desenharGrafico(lista);
+    var tabHtml = '';
+    if(lista.length===0){
+      tabHtml = '<div class="empty-msg">Sem dados suficientes ainda.</div>';
+    } else {
+      tabHtml = '<table class="rep"><tr><th>Data</th><th>Acertos</th><th>%</th></tr>';
+      lista.slice().reverse().forEach(function(t){
+        var st = statsDoTreino(t);
+        tabHtml += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.pct+'%</td></tr>';
+      });
+      tabHtml += '</table>';
+    }
+    document.getElementById("tabelaResumo").innerHTML = tabHtml;
+  }
+
+  function desenharGrafico(lista){
+    var canvas = document.getElementById("chartCanvas");
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = canvas.clientWidth || 600;
+    var cssH = 220;
+    canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    var padL=32, padR=12, padT=14, padB=28;
+    var plotW = cssW-padL-padR, plotH = cssH-padT-padB;
+
+    ctx.strokeStyle = "#c9bfa8";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+plotH); ctx.lineTo(padL+plotW, padT+plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = "#57635c";
+    ctx.font = "10px -apple-system,sans-serif";
+    ctx.textAlign = "right";
+    [0,5,10,15,20,25].forEach(function(v){
+      var y = padT+plotH - (v/25)*plotH;
+      ctx.fillText(String(v), padL-6, y+3);
+      ctx.strokeStyle = "#ede8da";
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y); ctx.stroke();
+    });
+
+    if(lista.length===0){
+      ctx.textAlign="center";
+      ctx.fillText("Sem treinos registrados", cssW/2, cssH/2);
+      return;
+    }
+
+    var n = lista.length;
+    var slot = plotW/n;
+    var barW = Math.min(28, slot*0.55);
+
+    lista.forEach(function(t, i){
+      var st = statsDoTreino(t);
+      var x = padL + slot*i + slot/2 - barW/2;
+      var barH = (st.acertos/25)*plotH;
+      var y = padT+plotH-barH;
+      ctx.fillStyle = "#bf5b2e";
+      ctx.fillRect(x,y,barW,barH);
+      ctx.fillStyle = "#24322e";
+      ctx.font="9px -apple-system,sans-serif";
+      ctx.textAlign="center";
+      ctx.fillText(String(st.acertos), x+barW/2, y-4<padT? padT+10 : y-4);
+      var dLabel = t.data.slice(5).split("-").reverse().join("/");
+      ctx.fillStyle="#57635c";
+      ctx.fillText(dLabel, x+barW/2, padT+plotH+14);
+    });
+  }
+
+  document.getElementById("btnPdfHistorico").addEventListener("click", function(){
+    var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+    var canvas = document.getElementById("chartCanvas");
+    var imgData = canvas.toDataURL("image/png");
+    var html = '<h2>Caderno de Tiro — Histórico Consolidado</h2>';
+    if(lista.length===0){
+      html += '<p>Nenhum treino registrado.</p>';
+    } else {
+      html += '<img src="'+imgData+'" style="width:100%;max-width:600px;border:1px solid #999;margin:8px 0;">';
+      html += '<table><tr><th>Data</th><th>Acertos</th><th>%</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>';
+      lista.slice().reverse().forEach(function(t){
+        var st = statsDoTreino(t);
+        var cols = st.porPedana.map(function(p){ return p.acertos+"/5"; });
+        html += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.pct+'%</td><td>'+cols.join('</td><td>')+'</td></tr>';
+      });
+      html += '</table>';
+    }
+    document.getElementById("printArea").innerHTML = html;
+    window.print();
+  });
+
+  // ---------- toast ----------
+  var toastTimer=null;
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- backup manual / importar ----------
+  document.getElementById("btnBackupManual").addEventListener("click", function(){
+    baixarBackup();
+    showToast("Backup baixado.");
+  });
+  document.getElementById("btnAbrirImport").addEventListener("click", function(){
+    document.getElementById("inpImport").click();
+  });
+  document.getElementById("inpImport").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(file) importarBackup(file);
+    e.target.value = "";
+  });
+
+  // ---------- abas ----------
+  function switchTab(name){
+    document.querySelectorAll("nav.tabs button").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-tab")===name);
+    });
+    document.querySelectorAll("section.view").forEach(function(v){
+      v.classList.toggle("active", v.id==="view-"+name);
+    });
+    if(name==="graficos") renderGraficos();
+    if(name==="historico") renderHistorico();
+  }
+  document.querySelectorAll("nav.tabs button").forEach(function(b){
+    b.addEventListener("click", function(){ switchTab(b.getAttribute("data-tab")); });
+  });
+
+  // ---------- init ----------
+  renderNovoTreino();
+  renderHistorico();
+  renderGraficos();
+
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>
