@@ -83,14 +83,26 @@
 
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:.78rem;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
-  .field input[type=date]{
+  .field input[type=date],
+  .field input[type=text]{
+    -webkit-appearance:none;
+    appearance:none;
+    box-sizing:border-box;
+    display:block;
     width:100%;
-    padding:10px 12px;
+    height:44px;
+    padding:0 12px;
     border:1px solid var(--line);
     border-radius:6px;
     background:var(--white);
+    font-family:inherit;
     font-size:1rem;
+    line-height:44px;
+    text-align:left;
     color:var(--ink);
+  }
+  .field input[type=date]::-webkit-date-and-time-value{
+    text-align:left;
   }
 
   .summary-bar{
@@ -106,8 +118,8 @@
     padding:8px 10px;
     text-align:center;
   }
-  .summary-chip .num{font-family:ui-serif,Georgia,serif;font-size:1.4rem;font-weight:700;}
-  .summary-chip .lbl{font-size:.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .summary-chip .num{font-family:ui-serif,Georgia,serif;font-size:1.15rem;font-weight:700;}
+  .summary-chip .lbl{font-size:.62rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;}
 
   .pedana-card{
     background:var(--white);
@@ -196,6 +208,7 @@
   .hist-item .date{font-family:ui-serif,Georgia,serif;font-weight:700;font-size:1.05rem;}
   .hist-item .score{font-size:.95rem;color:var(--hit);font-weight:700;}
   .hist-item .breakdown{font-size:.74rem;color:var(--ink-soft);margin-bottom:8px;}
+  .hist-item .pedana-breakdown div{line-height:1.5;}
   .hist-item .btnrow{display:flex;gap:6px;flex-wrap:wrap;}
   .hist-item .btnrow button{
     border:1px solid var(--line);
@@ -271,8 +284,19 @@
       <input type="date" id="inpData">
     </div>
 
+    <div class="field">
+      <label for="inpArma">Arma</label>
+      <input type="text" id="inpArma" placeholder="ex: Beretta 686, CBC 12-gauge...">
+    </div>
+
+    <div class="field">
+      <label for="inpMunicao">Munição</label>
+      <input type="text" id="inpMunicao" placeholder="ex: CBC 24g chumbo 7,5">
+    </div>
+
     <div class="summary-bar">
       <div class="summary-chip"><div class="num" id="sumAcertos">0</div><div class="lbl">Acertos</div></div>
+      <div class="summary-chip"><div class="num" id="sumErros">0</div><div class="lbl">Erros</div></div>
       <div class="summary-chip"><div class="num" id="sumMarcados">0/25</div><div class="lbl">Marcados</div></div>
       <div class="summary-chip"><div class="num" id="sumPct">0%</div><div class="lbl">Aproveit.</div></div>
     </div>
@@ -308,7 +332,7 @@
       </div>
       <input type="file" id="inpImport" accept="application/json,.json" style="display:none;">
       <p style="font-size:.72rem;color:var(--ink-soft);margin-top:8px;">
-        Um backup é baixado automaticamente sempre que você salva ou exclui um treino. Os arquivos vão para a pasta de downloads configurada no Safari (Ajustes → Safari → Downloads) — pode apagar as versões antigas quando quiser.
+        Toque em "Baixar backup agora" sempre que quiser guardar uma cópia do seu histórico. O arquivo vai para a pasta de downloads configurada no Safari (Ajustes → Safari → Downloads) — pode apagar as versões antigas quando quiser.
       </p>
     </div>
   </section>
@@ -385,7 +409,7 @@
       for(var s=0;s<5;s++){ shots.push({hit:null, side:null}); }
       pedanas.push(shots);
     }
-    return { id:null, data: hojeISO(), pedanas: pedanas };
+    return { id:null, data: hojeISO(), arma:"", municao:"", pedanas: pedanas };
   }
 
   function hojeISO(){
@@ -405,32 +429,39 @@
 
   // ---------- cálculo de estatísticas ----------
   function statsDoTreino(treino){
-    var acertos=0, marcados=0, total=25;
+    var acertos=0, marcados=0, erros=0, total=25;
     var porPedana = [];
     var porLado = {E:0,C:0,D:0};
     treino.pedanas.forEach(function(shots){
-      var pAcertos=0, pMarcados=0;
+      var pAcertos=0, pMarcados=0, pErros=0;
       shots.forEach(function(sh){
-        if(sh.hit){ marcados++; pMarcados++; if(sh.hit==='hit'){acertos++; pAcertos++;} }
+        if(sh.hit){
+          marcados++; pMarcados++;
+          if(sh.hit==='hit'){ acertos++; pAcertos++; }
+          else { erros++; pErros++; }
+        }
         if(sh.side && sh.hit==='miss'){ porLado[sh.side]++; }
       });
-      porPedana.push({acertos:pAcertos, marcados:pMarcados});
+      porPedana.push({acertos:pAcertos, marcados:pMarcados, erros:pErros});
     });
-    return {acertos:acertos, marcados:marcados, total:total, pct: total? Math.round(acertos/total*100):0, porPedana:porPedana, porLado:porLado};
+    return {acertos:acertos, marcados:marcados, erros:erros, total:total, pct: total? Math.round(acertos/total*100):0, porPedana:porPedana, porLado:porLado};
   }
 
   // ---------- render: NOVO TREINO ----------
   function renderNovoTreino(){
     document.getElementById("inpData").value = current.data;
+    document.getElementById("inpArma").value = current.arma || "";
+    document.getElementById("inpMunicao").value = current.municao || "";
     var st = statsDoTreino(current);
     document.getElementById("sumAcertos").textContent = st.acertos;
+    document.getElementById("sumErros").textContent = st.erros;
     document.getElementById("sumMarcados").textContent = st.marcados + "/25";
     document.getElementById("sumPct").textContent = st.pct + "%";
 
     var html = "";
     for(var p=0; p<5; p++){
       var ps = st.porPedana[p];
-      html += '<div class="pedana-card"><h3>Pedana '+(p+1)+' <span class="pstat">'+ps.acertos+'/5</span></h3>';
+      html += '<div class="pedana-card"><h3>Pedana '+(p+1)+' <span class="pstat">'+ps.acertos+'/5 &nbsp;·&nbsp; '+ps.erros+' erro'+(ps.erros===1?'':'s')+'</span></h3>';
       for(var s=0; s<5; s++){
         var shot = current.pedanas[p][s];
         html += '<div class="shot-row">';
@@ -453,6 +484,12 @@
   document.getElementById("inpData").addEventListener("change", function(e){
     current.data = e.target.value;
   });
+  document.getElementById("inpArma").addEventListener("input", function(e){
+    current.arma = e.target.value;
+  });
+  document.getElementById("inpMunicao").addEventListener("input", function(e){
+    current.municao = e.target.value;
+  });
 
   document.getElementById("pedanasContainer").addEventListener("click", function(e){
     var btn = e.target.closest("button[data-action]");
@@ -472,9 +509,9 @@
 
   document.getElementById("btnLimpar").addEventListener("click", function(){
     if(confirm("Limpar todos os tiros marcados neste treino?")){
-      var keepId = current.id, keepData = current.data;
+      var keepId = current.id, keepData = current.data, keepArma = current.arma, keepMunicao = current.municao;
       current = novoTreinoVazio();
-      current.id = keepId; current.data = keepData;
+      current.id = keepId; current.data = keepData; current.arma = keepArma; current.municao = keepMunicao;
       renderNovoTreino();
     }
   });
@@ -490,8 +527,7 @@
       lista.push(current);
     }
     setTreinos(lista);
-    baixarBackup();
-    showToast("Treino salvo. Backup baixado.");
+    showToast("Treino salvo.");
     current = novoTreinoVazio();
     renderNovoTreino();
     renderHistorico();
@@ -510,10 +546,12 @@
     var html = "";
     lista.forEach(function(t){
       var st = statsDoTreino(t);
-      var breakdown = t.pedanas.map(function(_,i){ return "P"+(i+1)+": "+st.porPedana[i].acertos+"/5"; }).join("  ·  ");
+      var breakdown = t.pedanas.map(function(_,i){ return '<div>P'+(i+1)+': '+st.porPedana[i].acertos+'/5 ('+st.porPedana[i].erros+' erro'+(st.porPedana[i].erros===1?'':'s')+')</div>'; }).join('');
+      var equip = [t.arma, t.municao].filter(Boolean).join("  ·  ");
       html += '<div class="hist-item">';
       html += '<div class="row1"><span class="date">'+formatDateBR(t.data)+'</span><span class="score">'+st.acertos+'/25 ('+st.pct+'%)</span></div>';
-      html += '<div class="breakdown">'+breakdown+'</div>';
+      if(equip){ html += '<div class="breakdown">'+equip+'</div>'; }
+      html += '<div class="breakdown pedana-breakdown">'+breakdown+'</div>';
       html += '<div class="btnrow">';
       html += '<button data-act="editar" data-id="'+t.id+'">Editar</button>';
       html += '<button data-act="pdf" data-id="'+t.id+'">Imprimir / PDF</button>';
@@ -539,7 +577,6 @@
       if(confirm("Excluir o treino de "+formatDateBR(treino.data)+"?")){
         lista = lista.filter(function(t){ return t.id!==id; });
         setTreinos(lista);
-        baixarBackup();
         renderHistorico();
         renderGraficos();
       }
@@ -567,12 +604,18 @@
     doc.text("Caderno de Tiro - Trap", 14, y); y += 8;
     doc.setFontSize(11);
     doc.text("Data: " + formatDateBR(t.data) + "    Resultado: " + st.acertos + "/25 (" + st.pct + "%)", 14, y);
-    y += 10;
+    y += 6;
+    if(t.arma || t.municao){
+      doc.setFontSize(10);
+      doc.text("Arma: " + (t.arma || "-") + "    Municao: " + (t.municao || "-"), 14, y);
+      y += 6;
+    }
+    y += 4;
 
     t.pedanas.forEach(function(shots, p){
       if(y > 265){ doc.addPage(); y = 18; }
       doc.setFontSize(13);
-      doc.text("Pedana " + (p+1) + "  (" + st.porPedana[p].acertos + "/5)", 14, y);
+      doc.text("Pedana " + (p+1) + "  (" + st.porPedana[p].acertos + "/5 acertos, " + st.porPedana[p].erros + " erros)", 14, y);
       y += 7;
       doc.setFontSize(10);
       shots.forEach(function(sh, s){
@@ -619,7 +662,7 @@
       lista.slice().reverse().forEach(function(t){
         if(y > 275){ doc.addPage(); y = 18; }
         var st = statsDoTreino(t);
-        var cols = st.porPedana.map(function(p,i){ return "P"+(i+1)+":"+p.acertos+"/5"; }).join("  ");
+        var cols = st.porPedana.map(function(p,i){ return "P"+(i+1)+":"+p.acertos+"/5("+p.erros+"E)"; }).join("  ");
         doc.text(formatDateBR(t.data) + "  -  " + st.acertos + "/25 (" + st.pct + "%)  -  " + cols, 14, y);
         y += 6;
       });
@@ -631,9 +674,12 @@
     var st = statsDoTreino(t);
     var html = '<h2>Caderno de Tiro — Trap</h2>';
     html += '<p><strong>Data:</strong> '+formatDateBR(t.data)+' &nbsp;&nbsp; <strong>Resultado:</strong> '+st.acertos+'/25 ('+st.pct+'%)</p>';
+    if(t.arma || t.municao){
+      html += '<p><strong>Arma:</strong> '+(t.arma||'—')+' &nbsp;&nbsp; <strong>Munição:</strong> '+(t.municao||'—')+'</p>';
+    }
     html += '<div class="print-grid">';
     t.pedanas.forEach(function(shots, p){
-      html += '<div class="print-pedana"><h4>Pedana '+(p+1)+'</h4><table><tr><th>Tiro</th><th>Result.</th><th>Lado</th></tr>';
+      html += '<div class="print-pedana"><h4>Pedana '+(p+1)+' — '+st.porPedana[p].acertos+'/5 acertos, '+st.porPedana[p].erros+' erros</h4><table><tr><th>Tiro</th><th>Result.</th><th>Lado</th></tr>';
       shots.forEach(function(sh, s){
         var res = sh.hit==='hit' ? 'Acerto' : (sh.hit==='miss' ? 'Erro' : '—');
         var lado = sh.side || '—';
@@ -654,10 +700,10 @@
     if(lista.length===0){
       tabHtml = '<div class="empty-msg">Sem dados suficientes ainda.</div>';
     } else {
-      tabHtml = '<table class="rep"><tr><th>Data</th><th>Acertos</th><th>%</th></tr>';
+      tabHtml = '<table class="rep"><tr><th>Data</th><th>Acertos</th><th>Erros</th><th>%</th></tr>';
       lista.slice().reverse().forEach(function(t){
         var st = statsDoTreino(t);
-        tabHtml += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.pct+'%</td></tr>';
+        tabHtml += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.erros+'</td><td>'+st.pct+'%</td></tr>';
       });
       tabHtml += '</table>';
     }
@@ -720,8 +766,7 @@
     });
   }
 
-  document.getElementById("btnPdfHistorico").addEventListener("click", function(){
-    var lista = getTreinos().slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+  function imprimirHistoricoConsolidado(lista){
     var canvas = document.getElementById("chartCanvas");
     var imgData = canvas.toDataURL("image/png");
     var html = '<h2>Caderno de Tiro — Histórico Consolidado</h2>';
@@ -729,16 +774,20 @@
       html += '<p>Nenhum treino registrado.</p>';
     } else {
       html += '<img src="'+imgData+'" style="width:100%;max-width:600px;border:1px solid #999;margin:8px 0;">';
-      html += '<table><tr><th>Data</th><th>Acertos</th><th>%</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>';
+      html += '<table><tr><th>Data</th><th>Acertos</th><th>Erros</th><th>%</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>';
       lista.slice().reverse().forEach(function(t){
         var st = statsDoTreino(t);
-        var cols = st.porPedana.map(function(p){ return p.acertos+"/5"; });
-        html += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.pct+'%</td><td>'+cols.join('</td><td>')+'</td></tr>';
+        var cols = st.porPedana.map(function(p){ return p.acertos+"/5 ("+p.erros+"E)"; });
+        html += '<tr><td>'+formatDateBR(t.data)+'</td><td>'+st.acertos+'/25</td><td>'+st.erros+'</td><td>'+st.pct+'%</td><td>'+cols.join('</td><td>')+'</td></tr>';
       });
       html += '</table>';
     }
     document.getElementById("printArea").innerHTML = html;
     window.print();
+  }
+
+  document.getElementById("btnPdfHistorico").addEventListener("click", function(){
+    exportarPdfHistorico();
   });
 
   // ---------- toast ----------
